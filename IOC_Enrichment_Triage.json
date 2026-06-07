@@ -1,0 +1,208 @@
+{
+  "schema_version": 30,
+  "standard_lib_version": 90,
+  "action_runtime_version": 77,
+  "name": "IOC Enrichment Triage",
+  "description": null,
+  "guid": "9dfc677aab517b22596e4807c39edaa0",
+  "slug": "ioc_enrichment_triage",
+  "agents": [
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Receive IOC",
+      "disabled": false,
+      "description": null,
+      "guid": "7345a114a419dc43492f4ae4ca5b9f78",
+      "origin_story_identifier": "cloud:cd6cbad5222e4fa58adcdad224f04222:9dfc677aab517b22596e4807c39edaa0",
+      "options": {
+        "path": "4110fe65be6a2609fef30a4a9eb9e956",
+        "secret": "c701a813e8d822d3d613c20593a8b962",
+        "verbs": "get,post"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null
+      },
+      "template_tags": [],
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Check VirusTotal",
+      "disabled": false,
+      "description": null,
+      "guid": "b9b5a51b49cc529b094cf393559ca678",
+      "origin_story_identifier": "cloud:cd6cbad5222e4fa58adcdad224f04222:9dfc677aab517b22596e4807c39edaa0",
+      "options": {
+        "url": "https://www.virustotal.com/api/v3/ip_addresses/<<receive_ioc.body.ip>>",
+        "content_type": "json",
+        "method": "get",
+        "headers": {
+          "x-apikey": "YOUR_VT_API_KEY_HERE"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null
+      },
+      "template_tags": [],
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Is Malicious",
+      "disabled": false,
+      "description": null,
+      "guid": "0f329a77bfcee064b2f25ba97c546a91",
+      "origin_story_identifier": "cloud:cd6cbad5222e4fa58adcdad224f04222:9dfc677aab517b22596e4807c39edaa0",
+      "options": {
+        "rules": [
+          {
+            "path": "=check_virustotal.body.data.attributes.last_analysis_stats.malicious",
+            "type": "field>value",
+            "value": "5"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null
+      },
+      "template_tags": [],
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Format Verdict",
+      "disabled": false,
+      "description": null,
+      "guid": "4bf4e26946c1b4065d1fcf277e1f0f02",
+      "origin_story_identifier": "cloud:cd6cbad5222e4fa58adcdad224f04222:9dfc677aab517b22596e4807c39edaa0",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "ip": "<<receive_ioc.body.ip>>",
+          "malicious_count": "<<check_virustotal.body.data.attributes.last_analysis_stats.malicious>>",
+          "harmless_count": "<<check_virustotal.body.data.attributes.last_analysis_stats.harmless>>",
+          "verdict": "Malicious",
+          "vt_link": "https://www.virustotal.com/gui/ip-address/<<receive_ioc.body.ip>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null
+      },
+      "template_tags": [],
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::LLMAgent",
+      "name": "Analyst Summary",
+      "disabled": false,
+      "description": null,
+      "guid": "d89473aa2bf32f99c3a5a987ff5233b2",
+      "origin_story_identifier": "cloud:cd6cbad5222e4fa58adcdad224f04222:9dfc677aab517b22596e4807c39edaa0",
+      "options": {
+        "mode": "task",
+        "instructions": "You are a SOC L1 analyst. Based on this IOC data, write a 2-sentence triage summary in English then French. IP: <<format_verdict.ip>>, Malicious detections: <<format_verdict.malicious_count>>, Verdict: <<format_verdict.verdict>>",
+        "prompt": "Summarize the following data:\n\n<<example_data.body>>",
+        "code_analyst_enabled": false
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null
+      },
+      "template_tags": [],
+      "width": null,
+      "schedule": null
+    }
+  ],
+  "diagram_notes": [],
+  "links": [
+    { "source": 0, "receiver": 1 },
+    { "source": 1, "receiver": 2 },
+    { "source": 2, "receiver": 3 },
+    { "source": 3, "receiver": 4 }
+  ],
+  "diagram_layout": "{\"0f329a77bfcee064b2f25ba97c546a91\":[270,285],\"4bf4e26946c1b4065d1fcf277e1f0f02\":[270,405],\"7345a114a419dc43492f4ae4ca5b9f78\":[270,45],\"b9b5a51b49cc529b094cf393559ca678\":[270,165],\"d89473aa2bf32f99c3a5a987ff5233b2\":[270,525]}",
+  "story_library_metadata": {},
+  "monitor_failures": false,
+  "synchronous_webhooks_enabled": false,
+  "integrations": [],
+  "sections": [],
+  "parent_only_send_to_story": false,
+  "send_to_story_timeout_enabled": false,
+  "send_to_story_timeout_duration_seconds": null,
+  "keep_events_for": 86400,
+  "reporting_status": true,
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "api_entry_action_guids": [],
+  "api_exit_action_guids": [],
+  "send_to_story_access": null,
+  "send_to_story_access_source": 0,
+  "send_to_story_skill_use_requires_confirmation": true,
+  "pages": [],
+  "tags": [],
+  "time_saved_unit": "minutes",
+  "time_saved_value": 0,
+  "origin_story_identifier": "cloud:cd6cbad5222e4fa58adcdad224f04222:9dfc677aab517b22596e4807c39edaa0",
+  "recipients": [],
+  "integration_product": null,
+  "integration_vendor": null,
+  "llm_product_instructions": "",
+  "start_reference": null,
+  "app_endpoints": [],
+  "send_to_stories": [],
+  "exported_at": "2026-06-07T21:14:10Z",
+  "icon": ":trophy:"
+}
